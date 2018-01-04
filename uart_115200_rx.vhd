@@ -2,10 +2,10 @@
 --                 UART | Receiver unit
 -----------------------------------------------------------
 --
--- Copyright (c) 2008, Thijs van As <t.vanas@gmail.com>
+-- Copyright (c) 2017
 --
 -----------------------------------------------------------
--- Input:      clk        | System clock at 1.8432 MHz
+-- Input:      clk        | System clock at 50 MHz
 --             reset      | System reset
 --             rx         | RX line
 --
