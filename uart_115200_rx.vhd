@@ -45,11 +45,14 @@ architecture behavioural of uart_115200_rx is
     signal rx_filtered               : std_logic                    := '1';	
 	 signal receiving               	 : std_logic                    := '0';
 	 signal sample               	 	 : std_logic                    := '0';
+	 signal new_byte               	 : std_logic                    := '0';
 	 signal sample_hold               : std_logic                    := '0';
     signal rx_state                  : std_logic_vector(1 downto 0) := "11";
 begin
     data_out <= data_buffer;
 	 out_test <= sample;
+	 out_valid <= new_byte;
+	 
 	 
 	 filter_rx : process(clk, rx, reset)
 	 begin
@@ -107,6 +110,7 @@ begin
 				sample_tick <= "0000011011001"; -- 0xd9
 				sample_hold <= '0';
 				data_counter <= (others => '0');
+				new_byte <= '0';
         elsif (clk = '1' and clk'event) then            
 				if (receiving = '1') then
 					if(cycles >= sample_tick) then
@@ -119,34 +123,44 @@ begin
 						data_counter <= (others => '0');
 						data_buffer(7)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '1';
 					elsif (data_counter = 2) then
 						data_buffer(0)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					elsif (data_counter = 3) then
 						data_buffer(1)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					elsif (data_counter = 4) then
 						data_buffer(2)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					elsif (data_counter = 5) then
 						data_buffer(3)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					elsif (data_counter = 6) then
 						data_buffer(4)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					elsif (data_counter = 7) then
 						data_buffer(5)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					elsif (data_counter = 8) then
 						data_buffer(6)  <= sample_hold;
 						sample <= sample_hold;
+						new_byte <= '0';
 					else
 						sample <= '0';
+						new_byte <= '0';
 					end if;
 				else
 					sample_tick <= "0000011011001"; -- 0xd9
 					data_counter <= (others => '0');
 					sample <= '0';
+					new_byte <= '0';
 				end if;
         end if;
     end process clkgen_115k2;
