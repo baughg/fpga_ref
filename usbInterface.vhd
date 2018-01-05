@@ -33,25 +33,19 @@ use work.all;
 entity usbInterface is
     Port ( usb_clock : in  STD_LOGIC;	--u-ifclk
            dataPort : inout  STD_LOGIC_VECTOR (7 downto 0);	--u-fd
-			  dataToUsb : in  STD_LOGIC_VECTOR (7 downto 0);	--u-fd
-			  usbDataWritten : out STD_LOGIC;
-			  newUsbData : in STD_LOGIC;
+			  id : in  STD_LOGIC_VECTOR (7 downto 0);
+			  usb_data : in  STD_LOGIC_VECTOR (7 downto 0);
+			  new_data : in  STD_LOGIC;
            addressStrobePin : in  STD_LOGIC;	--uflaga
            dataStrobePin : in  STD_LOGIC;	--uflagb
            fpga2UsbPin : in  STD_LOGIC;		--uflagc
-           waitPin : out  STD_LOGIC;	--u-slrd	
-			  startCapture : out  STD_LOGIC;	--u-slrd	
-			  debugOutputs : out std_logic_vector(12 downto 0);
-			  matchWord : out std_logic_vector(15 downto 0);
-			  MOSI : out std_logic_vector(15 downto 0);
-			  CmdCtrl : out std_logic_vector(15 downto 0)			  
+           waitPin : out  STD_LOGIC;	--u-slrd
+			  debugOutputs : out std_logic_vector(12 downto 0)			  
          );  
 end usbInterface;
 
 
-architecture Behavioral of usbInterface is
-	
-   
+architecture Behavioral of usbInterface is   
 	signal dataIn : std_logic_vector(7 downto 0);	--input data register
 	signal dataOut : std_logic_vector(7 downto 0);	--output data register
    signal busOut : std_logic_vector(7 downto 0);   --data bus output
@@ -59,8 +53,7 @@ architecture Behavioral of usbInterface is
    
 	type ram_type is array(0 to 255) of std_logic_vector(7 downto 0);
    signal testRam : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
-   signal usbOutRam : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
-	
+   
    type state_type is (s0_Ready, s1_Fpga2Usb_Data, s1_Fpga2Usb_Address, s1_Usb2Fpga_Data, s1_Usb2Fpga_Address,
                        s2_Fpga2Usb_Data, s2_Fpga2Usb_Address, s2_Usb2Fpga_Data, s2_Usb2Fpga_Address);
    
@@ -82,30 +75,13 @@ architecture Behavioral of usbInterface is
 	signal ramWriteEnable : std_logic := '0'; --write enable for ram
 	signal addressUpdateEnable : std_logic := '0';
 	signal ramReadEnable : std_logic := '0'; --read enable for ram
-	signal usbDataWrittenFlag : std_logic := '0';
-	signal sentData : std_logic := '0';
-	signal usbDataStreamStarted : std_logic := '0';
+	
 	--signal char3, char2, char1, char0 : std_logic_vector(3 downto 0);
 	
 	
-   signal usbDataOut : std_logic_vector(7 downto 0);   --data bus output
-	signal usbDataOutHold : std_logic_vector(7 downto 0);   --data bus output
-	signal seqOut : std_logic_vector(7 downto 0);   --test usb sequencing
-	signal seqOrData : std_logic := '0';
-	signal dataEquSeq : std_logic := '0';
-	signal incSeq : std_logic := '1';
-	signal newCapture : std_logic := '0';
-	signal ackn : std_logic := '0';
-	signal usbRamAddr : std_logic_vector(7 downto 0);	--address register for usb
-	signal usbRamAddrSent : std_logic_vector(7 downto 0);	--address register for usb
-	signal lastDataToUSB : std_logic_vector(7 downto 0);	
-	signal iMatchWord : std_logic_vector(15 downto 0);
-	signal iMOSI : std_logic_vector(15 downto 0);
-	signal iCmdCtrl : std_logic_vector(15 downto 0);
+   
 begin
-	matchWord <= iMatchWord;
-	MOSI <= iMOSI;
-	CmdCtrl <= iCmdCtrl;
+	
 	debugOutputs <= dataPort & addressStrobePin & dataStrobePin & fpga2UsbPin & waitOutput & usb_clock;
 	
 	--control input/output direction based on control pins
@@ -115,129 +91,18 @@ begin
 	--get input
 	dataIn <= dataPort;
 	waitPin <= waitOutput;
-	usbDataWritten <= usbDataWrittenFlag;
 	
-	
-	
-process (usb_clock,testRam)
-begin
-if(rising_edge(usb_clock)) then
-	if(ackn = '1') then
-		iMatchWord(7 downto 0) <= testRam(1);
-		iMatchWord(15 downto 8) <= testRam(2);
-		iCmdCtrl(7 downto 0) <= testRam(5);
-		iCmdCtrl(15 downto 8) <= testRam(6);
-		iMOSI(7 downto 0) <= testRam(3);
-		iMOSI(15 downto 8) <= testRam(4);
-	end if;
-end if;
-end process;
-	--NewUsbDataProcess : process(newUsbData,usb_clock)
-	--begin
-	--if(rising_edge(usb_clock)) then
-		--if(newUsbData = '1') then
-			--usbDataWrittenFlag <= '0';
-			--usbDataStreamStarted <= '1';
-			--usbDataOut <= dataToUsb;
-		--else
-		--	usbDataWrittenFlag <= '1';
-		--else
-			--usbDataStreamStarted <= '0';
-		--end if;
-	--end if;
-	--end process;
-	
-	MemoryProcess : process(usb_clock, newUsbData)   --ram control process
+	MemoryProcess : process(usb_clock)   --ram control process
 	begin
 		if(rising_edge(usb_clock)) then
-			usbDataWrittenFlag <= '0';
-			
-			if(ramWriteEnable = '1') then
+			if(ramWriteEnable = '1') then				
 				testRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
-				
-				if(usbAddressRegister = "00000111") then
-					ackn <= '1';
-				else
-					ackn <= '0';
-				end if;
-					
-				if(dataIn = "11111110") then
-					seqOut <= "10000000";
-					seqOrData <= '0';
-					newCapture <= '1';
-				end if;
-				
-				
+				-- testRam(conv_integer(usbAddressRegister)) <= "10100011";
 			end if;
-			
 			if(ramReadEnable = '1') then
-				if(newUsbData = '1') then
-					newCapture <= '0';
-					--usbOutRam(conv_integer(usbRamAddr)) <= "11111111";
-					usbOutRam(conv_integer(usbRamAddr)) <= dataToUsb;
-					usbRamAddr <= usbRamAddr + 1;
-					--usbDataOut <= dataToUsb;
-					dataOut <= seqOut;										
-					
-					
-					if(dataEquSeq = '0') then
-						seqOrData <= '1';
-					else
-						seqOrData <= '0';
-					end if;
-					
-					usbDataWrittenFlag <= '1';
-				end if;
-				
-				
-				if(seqOrData = '1') then		
-					if(usbRamAddr /= usbRamAddrSent) then
-						dataOut <= usbOutRam(conv_integer(usbRamAddrSent));
-						lastDataToUSB <= usbOutRam(conv_integer(usbRamAddrSent));
-						
-						if(usbOutRam(conv_integer(usbRamAddrSent)) < seqOut) then
-							dataEquSeq <= '0';							
-						elsif(usbOutRam(conv_integer(usbRamAddrSent)) > seqOut) then
-							dataEquSeq <= '0';							
-						else
-							dataEquSeq <= '1';							
-						end if;
-						--dataOut <= "11111111";
-						seqOut <= seqOut + 1;
-						usbRamAddrSent <= usbRamAddrSent + 1;
-						seqOrData <= '0';
-					else
-						dataOut <= seqOut;
-					end if;
-				elsif(seqOrData = '0') then
-					if(dataEquSeq = '1') then
-						
-						dataOut <= lastDataToUSB xor "10101010";
-						seqOut <= seqOut + 1;
-						dataEquSeq <= '0';
-					else
-						dataOut <= seqOut;						
-					end if;
-					if(usbRamAddr /= usbRamAddrSent) then
-						seqOrData <= '1';
-					else
-						seqOrData <= '0';
-					end if;					
-				end if;
-				--if(usbDataStreamStarted = '1') then
-				----dataOut <= testRam(conv_integer(usbAddressRegister)); --read on rising edge
-					----dataOut <= usbDataOut; --read on rising edge
-										
-					--dataOut <= usbDataOut;
-					--seqOut <= seqOut + 1;	
-					--usbDataWrittenFlag <= '1';
-				--else
-					--dataOut <= usbDataOut;
-					--usbDataWrittenFlag <= '0';
-				--end if;				
-				
+				dataOut <= testRam(conv_integer(usbAddressRegister)); --read on rising edge
 			end if;
-		end if;
+	end if;
 	end process;
 	
 	AddressProcess : process(usb_clock)
