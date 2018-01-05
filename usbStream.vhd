@@ -45,6 +45,7 @@ entity usbStream is
            usb_send : out  STD_LOGIC;
 			  out_test : out  STD_LOGIC;
            usb_data : out  STD_LOGIC_VECTOR (7 downto 0);
+			  id : out  STD_LOGIC_VECTOR (7 downto 0);
            usb_ready : in  STD_LOGIC);
 end usbStream;
 
@@ -67,11 +68,13 @@ signal d1_usb                : std_logic_vector(7 downto 0) := (others => '0');
 signal d0_cap                : std_logic_vector(7 downto 0) := (others => '0');
 signal d1_cap                : std_logic_vector(7 downto 0) := (others => '0');
 signal usb_send_out          : std_logic_vector(7 downto 0) := (others => '0');
+signal id_out          		  : std_logic_vector(7 downto 0) := (others => '0');
 
 begin
 	out_test <= d0_good;
 	usb_data <= usb_send_out;
 	usb_send <= send_to_usb;
+	id <= id_out;
 	
 	d0_monitor : process(clk, d0_ready, reset)
 	 begin
@@ -97,12 +100,10 @@ begin
 			d0_bytes_read <= (others => '0');
 			d1_bytes_read <= (others => '0');
 			usb_send_out <= (others => '0');
+			id_out <= "00000000";
 			can_send <= '1';
 		elsif (wclk = '1' and wclk'event) then
-		
-			if(usb_ready = '1') then
-				can_send <= '1';
-			end if;
+			can_send <= '1';
 			
 			if (d0_bytes_read /= d0_bytes) then				
 				d0_bytes_read <= d0_bytes;
@@ -122,28 +123,20 @@ begin
 					d0_sent <= '1';
 					usb_send_out <= d0_usb;
 					send_to_usb <= '1';
-					can_send <= '0';
-				elsif(d0_sent = '1') then				
-					d0_sent <= '0';
-					usb_send_out <= "00000001";
-					send_to_usb <= '1';
-					can_send <= '0';
+					id_out <= "00000001";
+					can_send <= '0';				
 				elsif(d1_good = '1') then
 					d1_good <= '0';
 					d1_sent <= '1';
 					usb_send_out <= d1_usb;
 					send_to_usb <= '1';
-					can_send <= '0';
-				elsif(d1_sent = '1') then				
-					d1_sent <= '0';
-					usb_send_out <= "00000010";
-					send_to_usb <= '1';
-					can_send <= '0';
+					id_out <= "00000010";
+					can_send <= '0';				
 				else
-					send_to_usb <= '0';
+					send_to_usb <= '0';					
 				end if;
 			else
-				send_to_usb <= '0';
+				send_to_usb <= '0';				
 			end if;
 		end if;
 	 end process monitor_usb;
