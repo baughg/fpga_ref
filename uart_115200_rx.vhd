@@ -95,7 +95,7 @@ begin
 			if (rx_filtered = '0' and receiving = '0' and rx_filtered_prev = '1') then
 				receiving <= '1';
 				cycles <= (others => '0');				
-			elsif (cycles >= 4339 and receiving = '1') then
+			elsif (cycles >= 3906 and receiving = '1') then
 				receiving <= '0';
 				cycles <= cycles;
 			else

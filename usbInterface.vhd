@@ -54,7 +54,7 @@ architecture Behavioral of usbInterface is
 	signal usbAddressRegister : std_logic_vector(7 downto 0);	--address register for usb
    		
 	type ram_type is array(0 to 255) of std_logic_vector(7 downto 0);
-   signal testRam : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
+   signal captureRamNew : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
    signal captureRam : ram_type := (others => (others => '0'));
    type state_type is (s0_Ready, s1_Fpga2Usb_Data, s1_Fpga2Usb_Address, s1_Usb2Fpga_Data, s1_Usb2Fpga_Address,
                        s2_Fpga2Usb_Data, s2_Fpga2Usb_Address, s2_Usb2Fpga_Data, s2_Usb2Fpga_Address);
@@ -77,7 +77,7 @@ architecture Behavioral of usbInterface is
 	signal ramWriteEnable : std_logic := '0'; --write enable for ram
 	signal addressUpdateEnable : std_logic := '0';
 	signal ramReadEnable : std_logic := '0'; --read enable for ram
-	
+	signal got_data : std_logic := '0';
 	--signal char3, char2, char1, char0 : std_logic_vector(3 downto 0);
 	
 	
@@ -99,23 +99,31 @@ begin
 		if(rising_edge(usb_clock)) then
 			if(new_data = '1') then		
 				cap_reg_addr <= id - 1;
-				captureRam(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
-				captureRam(conv_integer(cap_reg_addr+2)) <= id;		
+				got_data <= '1';
+				captureRamNew(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
+				captureRamNew(conv_integer(cap_reg_addr+2)) <= id;		
 			end if;
 									
 			
 			if(ramWriteEnable = '1') then				
-				testRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
+				captureRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
 				-- testRam(conv_integer(usbAddressRegister)) <= "10100011";
 			end if;
 			
 			if(ramReadEnable = '1') then
 				dataOut <= captureRam(conv_integer(usbAddressRegister)); --read on rising edge
 				
+				
 				if (usbAddressRegister = 2) then -- port 0 status register					
 					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
 				elsif (usbAddressRegister = 3) then				
 					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
+				end if;				
+			else
+				if (got_data = '1') then
+					captureRam(conv_integer(cap_reg_addr)) <= captureRamNew(conv_integer(cap_reg_addr));
+					captureRam(conv_integer(cap_reg_addr+2)) <= captureRamNew(conv_integer(cap_reg_addr+2));
+					got_data <= '0';
 				end if;
 			end if;		
 	end if;
