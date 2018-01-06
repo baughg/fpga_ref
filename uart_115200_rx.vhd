@@ -42,7 +42,7 @@ architecture behavioural of uart_115200_rx is
 	 signal cycles                    : std_logic_vector(12 downto 0) := (others => '0');
 	 signal sample_tick               : std_logic_vector(12 downto 0) := "0000011011001";
     signal data_buffer               : std_logic_vector(7 downto 0);
-    signal rx_filtered               : std_logic                    := '1';
+    signal rx_filtered               : std_logic                    := '0';
 	 signal rx_filtered_prev          : std_logic                    := '0';
 	 signal receiving               	 : std_logic                    := '0';
 	 signal sample               	 	 : std_logic                    := '0';
@@ -58,7 +58,7 @@ begin
 	 filter_rx : process(clk, rx, reset)
 	 begin
 		if (reset = '1') then	
-			rx_filtered <= '1';		
+			rx_filtered <= '0';		
 			rx_hist_0 <= (others => '0');
 			rx_hist_1 <= (others => '0');
 			rx_hist_sum <= (others => '0');
@@ -95,7 +95,7 @@ begin
 			if (rx_filtered = '0' and receiving = '0' and rx_filtered_prev = '1') then
 				receiving <= '1';
 				cycles <= (others => '0');				
-			elsif (rx_filtered = '1' and cycles >= 3906 and receiving = '1') then
+			elsif (cycles >= 4339 and receiving = '1') then
 				receiving <= '0';
 				cycles <= cycles;
 			else
