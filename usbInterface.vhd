@@ -36,6 +36,7 @@ entity usbInterface is
 			  id : in  STD_LOGIC_VECTOR (7 downto 0);
 			  usb_data : in  STD_LOGIC_VECTOR (7 downto 0);
 			  new_data : in  STD_LOGIC;
+			  reset : in  STD_LOGIC;	--uflaga
            addressStrobePin : in  STD_LOGIC;	--uflaga
            dataStrobePin : in  STD_LOGIC;	--uflagb
            fpga2UsbPin : in  STD_LOGIC;		--uflagc
@@ -51,12 +52,7 @@ architecture Behavioral of usbInterface is
    signal busOut : std_logic_vector(7 downto 0);   --data bus output
 	signal cap_reg_addr : std_logic_vector(7 downto 0);
 	signal usbAddressRegister : std_logic_vector(7 downto 0);	--address register for usb
-   
-	signal port0_seq_set : std_logic_vector(7 downto 0) := (others => '0');
-	signal port0_seq_get : std_logic_vector(7 downto 0) := (others => '0');
-	signal port1_seq_set : std_logic_vector(7 downto 0) := (others => '0');
-	signal port1_seq_get : std_logic_vector(7 downto 0) := (others => '0');
-	
+   		
 	type ram_type is array(0 to 255) of std_logic_vector(7 downto 0);
    signal testRam : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
    signal captureRam : ram_type := (others => (others => '0'));
@@ -81,7 +77,7 @@ architecture Behavioral of usbInterface is
 	signal ramWriteEnable : std_logic := '0'; --write enable for ram
 	signal addressUpdateEnable : std_logic := '0';
 	signal ramReadEnable : std_logic := '0'; --read enable for ram
-	signal cycle_delay : std_logic := '0';
+	
 	--signal char3, char2, char1, char0 : std_logic_vector(3 downto 0);
 	
 	
@@ -101,49 +97,31 @@ begin
 	MemoryProcess : process(usb_clock)   --ram control process
 	begin
 		if(rising_edge(usb_clock)) then
+			if(new_data = '1') then		
+				cap_reg_addr <= id - 1;
+				captureRam(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
+				captureRam(conv_integer(cap_reg_addr+2)) <= id;		
+			end if;
+									
+			
 			if(ramWriteEnable = '1') then				
 				testRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
 				-- testRam(conv_integer(usbAddressRegister)) <= "10100011";
 			end if;
+			
 			if(ramReadEnable = '1') then
 				dataOut <= captureRam(conv_integer(usbAddressRegister)); --read on rising edge
 				
-				if (usbAddressRegister = 2) then -- port 0 status register
-					port0_seq_get <= port0_seq_set;
-				elsif (usbAddressRegister = 3) then
-					port1_seq_get <= port1_seq_set;
+				if (usbAddressRegister = 2) then -- port 0 status register					
+					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
+				elsif (usbAddressRegister = 3) then				
+					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
 				end if;
-			end if;
+			end if;		
 	end if;
 	end process;
 	
-	CaptureUpdate : process(usb_clock, new_data)   --ram control process
-	begin
-		if(rising_edge(usb_clock)) then
-			if(new_data = '1') then		
-				cap_reg_addr <= id - 1;
-				captureRam(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
-				captureRam(conv_integer(cap_reg_addr+2)) <= id;
-				
-				if (id = 1) then-- port 0
-					port0_seq_set <= port0_seq_set + 1;
-				elsif (id = 2) then
-					port1_seq_set <= port1_seq_set + 1;
-				end if;
-			end if;
-
-			if (port0_seq_set = port0_seq_get and cycle_delay = '1') then
-				captureRam(2) <= "00000000";			
-			end if;
-			
-			if (port1_seq_set = port1_seq_get and cycle_delay = '1') then
-				captureRam(3) <= "00000000";			
-			end if;
-			
-			cycle_delay <= not cycle_delay;
-		end if;		
-	end process;
-	
+		
 	
 	
 	AddressProcess : process(usb_clock)
