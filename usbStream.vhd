@@ -129,11 +129,9 @@ begin
 				send_to_usb <= '0';			
 			elsif (read_cycle = 1) then
 				send_to_usb <= '1';					
-				usb_send_out <= request_word(7 downto 0);
-				id_out(3 downto 0) <= request_word(15 downto 12);	
 				request_sample <= '0';
 				--debug_out <= debug_out + 1;
-				debug_out <= usb_send_out(7 downto 0);			
+							
 			else 				
 				send_to_usb <= '0';				
 			end if;
@@ -143,6 +141,10 @@ begin
 			else
 				read_cycle <= (others => '0');
 			end if;
+			
+			usb_send_out <= request_word(7 downto 0);
+			id_out(3 downto 0) <= request_word(15 downto 12);
+			debug_out <= usb_send_out(7 downto 0);	
 			--send_to_usb <= not fifo_empty;
 			-- debug_out(7) <= fifo_empty;
 			-- debug_out(3 downto 0) <= id_out(3 downto 0);
