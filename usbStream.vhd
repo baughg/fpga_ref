@@ -66,12 +66,14 @@ signal d0_bytes              : std_logic_vector(3 downto 0) := (others => '0');
 signal d1_bytes              : std_logic_vector(3 downto 0) := (others => '0');
 signal d0_bytes_read         : std_logic_vector(3 downto 0) := (others => '0');
 signal d1_bytes_read         : std_logic_vector(3 downto 0) := (others => '0');
-signal debug_out         		: std_logic_vector(7 downto 0) := (others => '0');
+signal read_cycle         	  : std_logic_vector(3 downto 0) := (others => '0');
+signal debug_out         	  : std_logic_vector(7 downto 0) := (others => '0');
 signal fifo_write         	  : std_logic_vector(15 downto 0) := (others => '0');
 signal d0_good           	  : std_logic                    := '0';
 signal d1_good           	  : std_logic                    := '0';
 signal d0_sent           	  : std_logic                    := '0';
 signal d1_sent           	  : std_logic                    := '0';
+signal request_sample        : std_logic                    := '0';
 signal send_to_usb           : std_logic                    := '0';
 signal can_send           	  : std_logic                    := '1';
 signal usb_send_out          : std_logic_vector(7 downto 0) := (others => '0');
@@ -84,6 +86,7 @@ begin
 	id <= id_out;
 	--submit_word <= fifo_write;
 	out_debug <= debug_out;
+	request <= request_sample;
 	
 	d0_monitor : process(clk, d0_ready, reset)
 	 begin
@@ -114,26 +117,38 @@ begin
 			d0_bytes_read <= (others => '0');
 			d1_bytes_read <= (others => '0');
 			usb_send_out <= (others => '0');
+			read_cycle <= (others => '0');
 			id_out <= "00000000";
 			can_send <= '1';
+			request_sample <= '0';
 		elsif (wclk = '1' and wclk'event) then
 			can_send <= '1';
 			
-			if ( rd_count > 0) then
-				request <= '1';				
-				send_to_usb <= '1';
+			if ( fifo_empty = '0' and request_sample = '0') then
+				request_sample <= '1';				
+				send_to_usb <= '0';			
+			elsif (read_cycle = 1) then
+				send_to_usb <= '1';					
 				usb_send_out <= request_word(7 downto 0);
-				id_out(3 downto 0) <= request_word(15 downto 12);
-			else 
-				request <= '0';
-				send_to_usb <= '0';
+				id_out(3 downto 0) <= request_word(15 downto 12);	
+				request_sample <= '0';
+				--debug_out <= debug_out + 1;
+				debug_out <= usb_send_out(7 downto 0);			
+			else 				
+				send_to_usb <= '0';				
 			end if;
 			
+			if ( request_sample = '1') then
+				read_cycle <= read_cycle + 1;
+			else
+				read_cycle <= (others => '0');
+			end if;
 			--send_to_usb <= not fifo_empty;
 			-- debug_out(7) <= fifo_empty;
 			-- debug_out(3 downto 0) <= id_out(3 downto 0);
-			debug_out(3 downto 0) <= rd_count;
-			debug_out(7 downto 4) <= id_out(3 downto 0);
+			-- debug_out(3 downto 0) <= rd_count;
+			-- debug_out(7 downto 4) <= id_out(3 downto 0);
+			--debug_out <= usb_send_out(7 downto 0);
 		end if;
 	 end process monitor_usb;
 	 
