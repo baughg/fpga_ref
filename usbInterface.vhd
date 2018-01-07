@@ -102,12 +102,12 @@ begin
 				got_data <= '1';
 				captureRamNew(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
 				captureRamNew(conv_integer(cap_reg_addr+2)) <= id;		
-				total_captured <= total_captured + 1;
-				captureRam(16) <= total_captured(7 downto 0);
-				captureRam(17) <= total_captured(15 downto 8);
+				total_captured <= total_captured + 1;				
 			end if;
 									
 			
+			captureRam(16) <= total_captured(7 downto 0);
+			captureRam(17) <= total_captured(15 downto 8);
 				
 			if(ramWriteEnable = '1') then				
 				captureRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
