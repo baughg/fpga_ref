@@ -52,7 +52,7 @@ architecture Behavioral of usbInterface is
    signal busOut : std_logic_vector(7 downto 0);   --data bus output
 	signal cap_reg_addr : std_logic_vector(7 downto 0);
 	signal usbAddressRegister : std_logic_vector(7 downto 0);	--address register for usb
-   		
+   signal total_captured : std_logic_vector(15 downto 0) := (others => '0');		
 	type ram_type is array(0 to 255) of std_logic_vector(7 downto 0);
    signal captureRamNew : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
    signal captureRam : ram_type := (others => (others => '0'));
@@ -102,9 +102,13 @@ begin
 				got_data <= '1';
 				captureRamNew(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
 				captureRamNew(conv_integer(cap_reg_addr+2)) <= id;		
+				total_captured <= total_captured + 1;
+				captureRam(16) <= total_captured(7 downto 0);
+				captureRam(17) <= total_captured(15 downto 8);
 			end if;
 									
 			
+				
 			if(ramWriteEnable = '1') then				
 				captureRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
 				-- testRam(conv_integer(usbAddressRegister)) <= "10100011";
