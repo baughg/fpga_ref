@@ -41,6 +41,8 @@ entity usbInterface is
            dataStrobePin : in  STD_LOGIC;	--uflagb
            fpga2UsbPin : in  STD_LOGIC;		--uflagc
            waitPin : out  STD_LOGIC;	--u-slrd
+			  out_test_a : out  STD_LOGIC;	--u-slrd
+			  out_test_b : out  STD_LOGIC;	--u-slrd
 			  debugOutputs : out std_logic_vector(12 downto 0)			  
          );  
 end usbInterface;
@@ -50,10 +52,14 @@ architecture Behavioral of usbInterface is
 	signal dataIn : std_logic_vector(7 downto 0);	--input data register
 	signal dataOut : std_logic_vector(7 downto 0);	--output data register
    signal busOut : std_logic_vector(7 downto 0);   --data bus output
+	signal buffer_index_a : std_logic_vector(6 downto 0) := (others => '0');
+	signal buffer_index_read : std_logic_vector(6 downto 0) := (others => '0');
+	signal buffer_index_b : std_logic_vector(6 downto 0) := "0000001";
 	signal cap_reg_addr : std_logic_vector(7 downto 0);
+	signal read_reg_addr : std_logic_vector(7 downto 0);
 	signal usbAddressRegister : std_logic_vector(7 downto 0);	--address register for usb
    signal total_captured : std_logic_vector(15 downto 0) := (others => '0');		
-	type ram_type is array(0 to 255) of std_logic_vector(7 downto 0);
+	type ram_type is array(0 to 129) of std_logic_vector(7 downto 0);
    signal captureRamNew : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
    signal captureRam : ram_type := (others => (others => '0'));
    type state_type is (s0_Ready, s1_Fpga2Usb_Data, s1_Fpga2Usb_Address, s1_Usb2Fpga_Data, s1_Usb2Fpga_Address,
@@ -78,6 +84,8 @@ architecture Behavioral of usbInterface is
 	signal addressUpdateEnable : std_logic := '0';
 	signal ramReadEnable : std_logic := '0'; --read enable for ram
 	signal got_data : std_logic := '0';
+	signal got_data_toggle : std_logic := '0';
+	signal read_data_toggle : std_logic := '0';
 	--signal char3, char2, char1, char0 : std_logic_vector(3 downto 0);
 	
 	
@@ -89,7 +97,8 @@ begin
 	--control input/output direction based on control pins
 	dataPort <= busOut when outputEnable = '1' else "ZZZZZZZZ";
 	busOut <= usbAddressRegister when addressDataMux = '0' else dataOut;
-	
+	out_test_a <= read_data_toggle;
+	out_test_b <= got_data_toggle;
 	--get input
 	dataIn <= dataPort;
 	waitPin <= waitOutput;
@@ -98,16 +107,23 @@ begin
 	begin
 		if(rising_edge(usb_clock)) then
 			if(new_data = '1') then		
-				cap_reg_addr <= id - 1;
+				--cap_reg_addr <= id - 1;
 				got_data <= '1';
-				captureRamNew(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
-				captureRamNew(conv_integer(cap_reg_addr+2)) <= id;		
+				got_data_toggle <= not got_data_toggle;
+				--captureRamNew(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
+				--captureRamNew(conv_integer(cap_reg_addr+2)) <= id;
+				cap_reg_addr(6 downto 0) <= buffer_index_a;				
+				captureRam(128) <= cap_reg_addr;
+				captureRam(conv_integer(buffer_index_a)) <= usb_data;
+				captureRam(conv_integer(buffer_index_b)) <= id;
+				buffer_index_a <= buffer_index_a + 2;
+				buffer_index_b <= buffer_index_b + 2;
 				total_captured <= total_captured + 1;				
 			end if;
 									
 			
-			captureRam(16) <= total_captured(7 downto 0);
-			captureRam(17) <= total_captured(15 downto 8);
+			
+			--captureRam(257) <= buffer_index_a(15 downto 8);
 				
 			if(ramWriteEnable = '1') then				
 				captureRam(conv_integer(usbAddressRegister)) <= dataIn;  --write on rising edge and write enable
@@ -115,20 +131,18 @@ begin
 			end if;
 			
 			if(ramReadEnable = '1') then
+				buffer_index_read <= buffer_index_a;
+				read_reg_addr(6 downto 0) <= buffer_index_read;
+				captureRam(129) <= read_reg_addr;
 				dataOut <= captureRam(conv_integer(usbAddressRegister)); --read on rising edge
 				
 				
-				if (usbAddressRegister = 2) then -- port 0 status register					
-					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
-				elsif (usbAddressRegister = 3) then				
-					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
+				if(new_data = '0') then
+					if (usbAddressRegister(0) = '1') then -- status register					
+						captureRam(conv_integer(usbAddressRegister)) <= "00000000";
+						read_data_toggle <= not read_data_toggle;					
+					end if;					
 				end if;				
-			else
-				if (got_data = '1') then
-					captureRam(conv_integer(cap_reg_addr)) <= captureRamNew(conv_integer(cap_reg_addr));
-					captureRam(conv_integer(cap_reg_addr+2)) <= captureRamNew(conv_integer(cap_reg_addr+2));
-					got_data <= '0';
-				end if;
 			end if;		
 	end if;
 	end process;
