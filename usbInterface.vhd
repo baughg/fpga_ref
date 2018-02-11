@@ -136,7 +136,7 @@ begin
 				
 				dataOut <= captureRam(conv_integer(usbAddressRegister)); --read on rising edge
 				
-				if(new_data = '0' and usbAddressRegister(0) = '0') then
+				if(usbAddressRegister /= buffer_index_b and usbAddressRegister(0) = '0') then
 					-- status register					
 					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
 					read_data_toggle <= not read_data_toggle;											

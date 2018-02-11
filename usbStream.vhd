@@ -63,6 +63,7 @@ architecture Behavioral of usbStream is
 --signal d0_ram : ram_type := (others => (others => '0'));   --setup 256 bytes of ram
 --signal d1_ram : ram_type := (others => (others => '0'));   --setup 256 bytes of ram	
 signal d0_bytes              : std_logic_vector(3 downto 0) := (others => '0');
+signal test_seq              : std_logic_vector(5 downto 0) := (others => '0');
 signal d1_bytes              : std_logic_vector(3 downto 0) := (others => '0');
 signal d0_bytes_read         : std_logic_vector(3 downto 0) := (others => '0');
 signal d1_bytes_read         : std_logic_vector(3 downto 0) := (others => '0');
@@ -97,9 +98,11 @@ begin
 				d0_bytes <= d0_bytes + 1;
 				
 				submit <= '1';
-				submit_word(7 downto 0) <= d0;
+				-- submit_word(7 downto 0) <= d0;
+				submit_word(5 downto 0) <= test_seq;
 				submit_word(11 downto 8) <= d0_bytes;
 				submit_word(15 downto 12) <= "0001";
+				test_seq <= test_seq + 1;
 			else
 				submit <= '0';
 			end if;
