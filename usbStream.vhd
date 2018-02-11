@@ -98,8 +98,8 @@ begin
 				d0_bytes <= d0_bytes + 1;
 				
 				submit <= '1';
-				-- submit_word(7 downto 0) <= d0;
-				submit_word(5 downto 0) <= test_seq;
+				submit_word(7 downto 0) <= d0;
+				-- submit_word(5 downto 0) <= test_seq;
 				submit_word(11 downto 8) <= d0_bytes;
 				submit_word(15 downto 12) <= "0001";
 				test_seq <= test_seq + 1;
