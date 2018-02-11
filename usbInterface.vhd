@@ -111,10 +111,10 @@ begin
 				got_data_toggle <= not got_data_toggle;
 				--captureRamNew(conv_integer(cap_reg_addr)) <= usb_data;  --write on rising edge and write enable	
 				--captureRamNew(conv_integer(cap_reg_addr+2)) <= id;
-				cap_reg_addr(6 downto 0) <= buffer_index_b;				
+				cap_reg_addr(6 downto 0) <= buffer_index_a;				
 				captureRam(128) <= cap_reg_addr;
-				captureRam(conv_integer(buffer_index_b)) <= usb_data;
-				captureRam(conv_integer(buffer_index_a)) <= id;
+				captureRam(conv_integer(buffer_index_a)) <= usb_data;
+				captureRam(conv_integer(buffer_index_b)) <= id;
 				buffer_index_a <= buffer_index_a + 2;
 				buffer_index_b <= buffer_index_b + 2;
 				total_captured <= total_captured + 1;				
@@ -130,13 +130,13 @@ begin
 			end if;
 			
 			if(ramReadEnable = '1') then
-				buffer_index_read <= buffer_index_b;
+				buffer_index_read <= buffer_index_a;
 				read_reg_addr(6 downto 0) <= buffer_index_read;
 				captureRam(129) <= read_reg_addr;
 				
 				dataOut <= captureRam(conv_integer(usbAddressRegister)); --read on rising edge
 				
-				if(usbAddressRegister /= buffer_index_b and usbAddressRegister(0) = '0') then
+				if(usbAddressRegister /= buffer_index_b and usbAddressRegister(0) = '1') then
 					-- status register					
 					captureRam(conv_integer(usbAddressRegister)) <= "00000000";
 					read_data_toggle <= not read_data_toggle;											
